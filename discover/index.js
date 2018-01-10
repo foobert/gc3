@@ -1,7 +1,6 @@
 const util = require("util");
 const assert = require("assert");
 const _ = require("lodash");
-const kafka = require("kafka-node");
 const request = require("superagent");
 
 function toTile(lat, lon) {
@@ -80,36 +79,42 @@ async function fetchTile(tile) {
   return gcs;
 }
 
-function connect() {
-  const client = new kafka.KafkaClient({ kafkaHost: "localhost:9092" });
-  const producer = new kafka.Producer(client, {});
-
-  producer.on("error", error);
-
-  return new Promise((resolve, reject) => {
-    producer.on("ready", () => resolve({ client, producer }));
-    producer.on("error", reject);
-  });
-}
-
-function error(err) {
-  if (err) {
-    console.log(err);
-  }
+async function connect() {
+  const MongoClient = require("mongodb").MongoClient;
+  const url = "mongodb://localhost:27017";
+  const dbName = "gc";
+  const client = await MongoClient.connect(url);
+  console.log("Connected successfully to server");
+  return client;
 }
 
 async function main() {
-  let { client, producer } = await connect();
-
-  // ugh
-  let close = util.promisify(client.close).bind(client);
-  let send = util.promisify(producer.send).bind(producer);
+  const client = await connect();
+  const db = client.db("gc");
+  const collection = db.collection("gcs");
 
   let tiles = toTiles({ lat: 51, lon: 12 }, { lat: 51, lon: 12 });
   for (let tile of tiles) {
+    let now = new Date();
+    let old = new Date();
+    old.setTime(old.getTime() - 24 * 60 * 60 * 1000); // one day ago
+
+    let existingGcs = await collection
+      .find({ tile, discover_date: { $gte: old } })
+      .count();
+
+    if (existingGcs > 0) {
+      console.log(
+        "x: " + tile.x,
+        "y: " + tile.y,
+        "z: " + tile.z,
+        "gcs: " + existingGcs + " already exist"
+      );
+      continue;
+    }
+
     let gcs = await fetchTile(tile);
     let bbox = toBoundingBox(tile);
-    let messages = gcs.map(gc => JSON.stringify({ gc, tile, bbox }));
 
     console.log(
       "x: " + tile.x,
@@ -118,8 +123,17 @@ async function main() {
       "gcs: " + gcs.length
     );
 
-    await send([{ topic: "foo", messages }]);
+    for (let gc of gcs) {
+      await collection.update(
+        { _id: gc },
+        { $set: { gc, tile, bbox, discover_date: now } },
+        { upsert: true }
+      );
+    }
+
+    //let messages = gcs.map(gc => JSON.stringify({ gc, tile, bbox }));
+    //await send([{ topic: "foo", messages }]);
   }
-  await close();
+  await client.close();
 }
 main();
