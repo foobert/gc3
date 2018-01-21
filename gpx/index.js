@@ -1,6 +1,6 @@
-const csv = require("csv-string");
 const debug = require("debug")("gc-gpx");
 const mongo = require("mongodb");
+const xml2js = require("xml2js");
 
 function code(doc) {
   return doc.gc.substr(2);
@@ -63,27 +63,52 @@ function description(doc) {
   );
 }
 
+async function generate(collection, type) {
+  const cursor = collection.find({
+    coord: { $exists: true },
+    "parsed.premium": false,
+    "parsed.type": type
+  });
+
+  console.log('<?xml version="1.0" encoding="UTF-8" standalone="no"?>');
+  console.log(
+    '<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+  );
+  console.log(
+    'xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd"'
+  );
+  console.log('version="1.1" creator="cachecache">');
+
+  const builder = new xml2js.Builder({
+    headless: true,
+    renderOpts: { pretty: false }
+  });
+
+  while (await cursor.hasNext()) {
+    let doc = await cursor.next();
+    const line = builder.buildObject({
+      wpt: {
+        $: {
+          lat: doc.coord.lat,
+          lon: doc.coord.lon
+        },
+        name: title(doc),
+        cmt: description(doc),
+        type: "Geocache"
+      }
+    });
+    console.log(line);
+  }
+  console.log("</gpx>");
+}
+
 async function main() {
   const url = "mongodb://localhost:27017";
   const client = await mongo.MongoClient.connect(url);
   const db = client.db("gc");
   const collection = db.collection("gcs");
 
-  const cursor = collection.find({
-    "parsed.premium": false,
-    coord: { $exists: true }
-  });
-
-  while (await cursor.hasNext()) {
-    let doc = await cursor.next();
-    const line = csv.stringify([
-      doc.coord.lon,
-      doc.coord.lat,
-      title(doc),
-      description(doc)
-    ]);
-    console.log(line);
-  }
+  await generate(collection, process.argv[2]);
 
   await client.close();
 }

@@ -1,18 +1,15 @@
 {
-  "name": "gpx",
-  "version": "1.0.0",
-  "description": "",
+  "name": "gc-gpx",
+  "version": "3.0.0",
+  "description": "Generate files for Garmin GPS",
+  "repository": "https://github.com/foobert/gc3",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "scripts": {},
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
-    "csv": "^2.0.0",
-    "csv-string": "^3.1.2",
-    "csv-stringify": "^2.0.1",
     "debug": "^3.1.0",
-    "mongo": "^0.1.0"
+    "mongodb": "^3.0.1",
+    "xml2js": "^0.4.19"
   }
 }
