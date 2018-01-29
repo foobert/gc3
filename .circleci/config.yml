@@ -6,6 +6,6 @@ jobs:
      - checkout
      - run: docker build -t foobert/gc3 lookup
      - run: |
-         docker login -u $DOCKER_USER -p $DOCKER_PASS
+         docker login -u "$DOCKER_USER" -p "$DOCKER_PASS"
          docker push foobert/gc3
 
