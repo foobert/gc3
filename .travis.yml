@@ -8,6 +8,12 @@ services:
 before_install:
   - docker build -t foobert/gc3-lookup lookup
 
+install:
+  - echo install
+
+script:
+  - echo script
+
 after_success:
   - if [ "$TRAVIS_BRANCH" == "master" ]; then
     docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD";
