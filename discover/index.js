@@ -81,7 +81,7 @@ async function fetchTile(tile) {
 
 async function connect() {
   const MongoClient = require("mongodb").MongoClient;
-  const url = "mongodb://localhost:27017";
+  const url = process.env["GC_DB_URI"] || "mongodb://localhost:27017";
   const dbName = "gc";
   const client = await MongoClient.connect(url);
   console.log("Connected successfully to server");
@@ -136,4 +136,7 @@ async function main() {
   }
   await client.close();
 }
-main();
+main().catch(err => {
+  console.log(err);
+  process.exit(-1);
+});

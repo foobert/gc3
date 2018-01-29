@@ -6,10 +6,13 @@ services:
   - docker
 
 install:
+  - docker build -t foobert/gc3-discover discover
   - docker build -t foobert/gc3-lookup lookup
 
 script:
   - echo script
 
 after_success:
-  - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD" && docker push foobert/gc3-lookup
+  - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+  - docker push foobert/gc3-discover
+  - docker push foobert/gc3-lookup
