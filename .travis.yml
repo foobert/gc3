@@ -5,18 +5,11 @@ language: node_js
 services:
   - docker
 
-before_install:
-  - docker build -t foobert/gc3-lookup lookup
-
 install:
-  - echo install
+  - docker build -t foobert/gc3-lookup lookup
 
 script:
   - echo script
 
 after_success:
-  - echo $TRAVIS_BRANCH
-  - if [ "$TRAVIS_BRANCH" == "master" ]; then
-    docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD";
-    docker push foobert/gc3-lookup;
-    fi
+  - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD" && docker push foobert/gc3-lookup
