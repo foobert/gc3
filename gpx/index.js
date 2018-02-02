@@ -93,6 +93,7 @@ async function generate(collection, type) {
           lon: doc.coord.lon
         },
         name: title(doc),
+        desc: description(doc),
         cmt: description(doc),
         type: "Geocache"
       }
