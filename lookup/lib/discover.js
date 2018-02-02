@@ -1,7 +1,10 @@
-const util = require("util");
-const assert = require("assert");
 const _ = require("lodash");
+const assert = require("assert");
+const debug = require("debug")("gc-lookup");
 const request = require("superagent");
+const util = require("util");
+
+const { daysAgo } = require("./util");
 
 function toTile(lat, lon) {
   const zoom = 11;
@@ -79,59 +82,34 @@ async function fetchTile(tile) {
   return gcs;
 }
 
-async function connect() {
-  const MongoClient = require("mongodb").MongoClient;
-  const url = process.env["GC_DB_URI"] || "mongodb://localhost:27017";
-  const dbName = "gc";
-  const client = await MongoClient.connect(url);
-  console.log("Connected successfully to server");
-  return client;
-}
-
-async function main() {
-  const client = await connect();
-  const db = client.db("gc");
-  const collection = db.collection("gcs");
-
-  if (process.argv.length != 6) {
-    console.err("Usage: discover lat lon lat lon");
-    process.exit(1);
+async function needUpdate(tile, collection) {
+  const fresh = false;
+  if (fresh) {
+    return true;
   }
 
-  const args = process.argv.slice(2).map(x => parseFloat(x));
-  let tiles = toTiles(
-    { lat: args[0], lon: args[1] },
-    { lat: args[2], lon: args[3] }
-  );
+  const existingGcs = await collection
+    .find({ tile, discover_date: { $gte: daysAgo(1) } })
+    .count();
+
+  if (existingGcs == 0) {
+    return true;
+  }
+
+  debug("Tile %o %d existing geocaches, skipping discover", tile, existingGcs);
+  return false;
+}
+
+async function discoverBoundingBox(bbox, collection) {
+  let tiles = toTiles(bbox[0], bbox[1]);
   for (let tile of tiles) {
     let now = new Date();
-    let old = new Date();
-    old.setTime(old.getTime() - 24 * 60 * 60 * 1000); // one day ago
-
-    let existingGcs = await collection
-      .find({ tile, discover_date: { $gte: old } })
-      .count();
-
-    if (existingGcs > 0) {
-      console.log(
-        "x: " + tile.x,
-        "y: " + tile.y,
-        "z: " + tile.z,
-        "gcs: " + existingGcs + " already exist"
-      );
-      continue;
-    }
-
     let gcs = await fetchTile(tile);
     let bbox = toBoundingBox(tile);
 
-    console.log(
-      "x: " + tile.x,
-      "y: " + tile.y,
-      "z: " + tile.z,
-      "gcs: " + gcs.length
-    );
+    debug("Tile %o %d geocaches", tile, gcs.length);
 
+    // TODO updateMany?
     for (let gc of gcs) {
       await collection.update(
         { _id: gc },
@@ -139,13 +117,27 @@ async function main() {
         { upsert: true }
       );
     }
-
-    //let messages = gcs.map(gc => JSON.stringify({ gc, tile, bbox }));
-    //await send([{ topic: "foo", messages }]);
   }
-  await client.close();
 }
-main().catch(err => {
-  console.log(err);
-  process.exit(-1);
-});
+
+async function discoverGeocaches(areas, gcs) {
+  debug("Discovering Geocaches");
+  const fresh = false;
+  const query = fresh
+    ? {}
+    : {
+        $or: [
+          { discover_date: { $exists: false } },
+          { discover_date: { $lt: daysAgo(1) } }
+        ]
+      };
+  const docs = await areas.find(query).toArray();
+
+  for (let doc of docs) {
+    debug("Discovering %s", doc.name);
+    await discoverBoundingBox(doc.bbox, gcs);
+    areas.update({ _id: doc._id }, { $set: { discover_date: new Date() } });
+  }
+}
+
+module.exports = discoverGeocaches;
