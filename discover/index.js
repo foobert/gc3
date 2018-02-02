@@ -93,7 +93,16 @@ async function main() {
   const db = client.db("gc");
   const collection = db.collection("gcs");
 
-  let tiles = toTiles({ lat: 51, lon: 12 }, { lat: 51, lon: 12 });
+  if (process.argv.length != 6) {
+    console.err("Usage: discover lat lon lat lon");
+    process.exit(1);
+  }
+
+  const args = process.argv.slice(2).map(x => parseInt(x));
+  let tiles = toTiles(
+    { lat: args[0], lon: args[1] },
+    { lat: args[2], lon: args[3] }
+  );
   for (let tile of tiles) {
     let now = new Date();
     let old = new Date();
