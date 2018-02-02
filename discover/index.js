@@ -98,7 +98,7 @@ async function main() {
     process.exit(1);
   }
 
-  const args = process.argv.slice(2).map(x => parseInt(x));
+  const args = process.argv.slice(2).map(x => parseFloat(x));
   let tiles = toTiles(
     { lat: args[0], lon: args[1] },
     { lat: args[2], lon: args[3] }
