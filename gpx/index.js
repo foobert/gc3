@@ -67,6 +67,8 @@ async function generate(collection, type) {
   const cursor = collection.find({
     coord: { $exists: true },
     "parsed.premium": false,
+    "parsed.disabled": false,
+    "parsed.foundScore": { $gt: 0.5 },
     "parsed.type": type
   });
 
