@@ -103,7 +103,7 @@ async function generate(collection, type) {
 }
 
 async function main() {
-  const url = "mongodb://localhost:27017";
+  const url = process.env["GC_DB_URI"] || "mongodb://localhost:27017";
   const client = await mongo.MongoClient.connect(url);
   const db = client.db("gc");
   const collection = db.collection("gcs");
