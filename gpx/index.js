@@ -86,8 +86,10 @@ async function generate(collection, type) {
     renderOpts: { pretty: false }
   });
 
+  let total = 0;
   while (await cursor.hasNext()) {
     let doc = await cursor.next();
+    total++;
     const line = builder.buildObject({
       wpt: {
         $: {
@@ -103,6 +105,7 @@ async function generate(collection, type) {
     console.log(line);
   }
   console.log("</gpx>");
+  console.error(`Generated ${total} ${type} entries`);
 }
 
 async function main() {
